@@ -25,6 +25,8 @@ MAX_MERGE_COUNT = 500
 
 MAX_TARGET_KEEP_TIMEOUT = 30
 
+DEFAULT_TARGET = {'lat': 0, 'lon': 0, 'altitude': 0, 'horizontal_speed': 0, 'vertical_rate': 0, 'track': 0, 'callsign': '---', 'last_seen': 0}
+
 def connector_thread():
   # GDL90 output
   s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -52,16 +54,27 @@ def connector_thread():
     while merge_count < MAX_MERGE_COUNT:
       try:
         target_update = target_updates_queue.get_nowait()
-        target_table.update(target_update)
+        new_mode_s_code = list(target_update.keys())[0]
+
+        if new_mode_s_code in target_table.keys():
+          target_table[new_mode_s_code] = {**target_table[new_mode_s_code], **target_update}
+        else:
+          target_table.update({new_mode_s_code: DEFAULT_TARGET})
+          target_table[new_mode_s_code] = {**target_table[new_mode_s_code], **target_update[new_mode_s_code]}
+          
         merge_count += 1
       except queue.Empty:
         break
         
     # Prune old targets
+    purge_list = []
     for mode_s_code, target in target_table.items():
-      if (time_start - target['last_seen'] > MAX_TRAFFIC_KEEP_TIMEOUT):
+      if (time_start - target['last_seen'] > MAX_TARGET_KEEP_TIMEOUT):
         print(f'Removing {mode_s_code}')
-        del target_table[mode_s_code]
+        purge_list.append(mode_s_code)
+        
+    for purge_mode_s_code in purge_list:
+      del target_table[purge_mode_s_code]
 
     # Heartbeat message
     buf = encoder.msgHeartbeat()
@@ -98,6 +111,8 @@ def connector_thread():
       # Do not include ownship
       if (mode_s_code == ownship.mode_s_code):
         continue
+        
+      print('send')
     
       # Pack the message
       buf = encoder.msgTrafficReport(latitude=target['lat'],
@@ -105,7 +120,7 @@ def connector_thread():
         altitude=target['altitude'],
         hVelocity=target['horizontal_speed'],
         vVelocity=target['vertical_rate'],
-        headingTrack=target['track'],
+        trackHeading=target['track'],
         callSign=target['callsign'],
         address=target['mode_s_code'])
         

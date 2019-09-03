@@ -112,13 +112,10 @@ class Encoder(object):
     msg.append(b)
     
     msg.extend(self._pack24bit(address))
-    
     msg.extend(self._pack24bit(self._makeLatitude(latitude)))
-    
     msg.extend(self._pack24bit(self._makeLongitude(longitude)))
     
     altitude = (int(altitude) + 1000) / 25
-    
     altitude = int(altitude)
     
     if (altitude < 0):

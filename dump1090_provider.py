@@ -42,28 +42,28 @@ class Dump1090Provider(threading.Thread):
         # Fetch and parse sentence from the network
         sentence = self.read_sentence()
         target = self.parse_sentence(sentence)
-        
+
         # Ignore a mode_s_code of 0, it's a heartbeat
         if (target['mode_s_code'] == 0):
           continue
         
         # Record time now
-        target['last seen'] = time()
+        target['last_seen'] = time()
         
         # Generate and enqueue the dict to emit
         target_update_data = {}
-        target_update_data['mode_s_code'] = target
+        target_update_data[target['mode_s_code']] = target
         self.target_update_queue.put(target_update_data)
         
       except SBS1ParseError as e:
         print(e)
  
-  def read_sentence(self, startkey=b"MSG", stopkey=b"\n"):
+  def read_sentence(self, startkey=b"MSG", stopkey=b"\r\n"):
     syncbuffer = bytearray()
     sentence = bytearray()
  
     # Wait for start key
-    while startkey not in syncbuffer:
+    while startkey not in syncbuffer[0:len(startkey)]:
       syncbuffer += self._readbytes(1)
       del syncbuffer[0:-len(startkey)]
  
@@ -104,7 +104,6 @@ class Dump1090Provider(threading.Thread):
           message[fieldname] = parser(value)
         except Exception as e:
           print(f"Parse warning on {fieldname} in MSG {sentence}: {str(e)}")
-          pass
           
     if 'mode_s_code' not in message:
       raise SBS1ParseError(f"MSG with no S code received: {sentence}")
