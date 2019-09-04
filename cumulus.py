@@ -42,7 +42,13 @@ def connector_thread():
   packetTotal = 0
   encoder = gdl90encoder.Encoder()
 
-  ownship = adsb_target.AdsbTarget(38.625263, -90.2001021, 600, 0, 0, 360, "N610SH", 0xA7F056)
+  ownship = adsb_target.AdsbTarget(38.625263, -90.2001021, 2500, 0, 0, 360, "N610SH", 0xA7F056)
+  
+  #packet = encoder.msgOwnershipReport(address=0x5555, latitude=20, longitude=30, altitude=2500, hVelocity=100, vVelocity=200, trackHeading=360)
+  #print(','.join('{:x}'.format(x) for x in packet))
+  
+  #while (True):
+    #time.sleep(5)
 
   target_table = {}
 
@@ -57,9 +63,13 @@ def connector_thread():
         new_mode_s_code = list(target_update.keys())[0]
 
         if new_mode_s_code in target_table.keys():
-          target_table[new_mode_s_code] = {**target_table[new_mode_s_code], **target_update}
+          print(f'Updating {new_mode_s_code:x}')
+          target_table[new_mode_s_code] = {**target_table[new_mode_s_code], **target_update[new_mode_s_code]}
+          print(target_table)
         else:
+          print(f'Adding {new_mode_s_code:x}')
           target_table.update({new_mode_s_code: DEFAULT_TARGET})
+          print(target_table)
           target_table[new_mode_s_code] = {**target_table[new_mode_s_code], **target_update[new_mode_s_code]}
           
         merge_count += 1
@@ -70,7 +80,7 @@ def connector_thread():
     purge_list = []
     for mode_s_code, target in target_table.items():
       if (time_start - target['last_seen'] > MAX_TARGET_KEEP_TIMEOUT):
-        print(f'Removing {mode_s_code}')
+        print(f'Removing {mode_s_code:x} {time_start}')
         purge_list.append(mode_s_code)
         
     for purge_mode_s_code in purge_list:
@@ -94,7 +104,7 @@ def connector_thread():
       vVelocity = ownship.vertical_rate,
       trackHeading = ownship.track,
       callSign = ownship.callsign)
-    s.sendto(buf, (DEF_SEND_ADDR, DEF_SEND_PORT))
+    s.sendto(bytes(buf), (DEF_SEND_ADDR, DEF_SEND_PORT))
     packetTotal += 1
     
     # Ownership geometric altitude
@@ -104,6 +114,8 @@ def connector_thread():
     
     # Traffic reports
     for mode_s_code, target in target_table.items():
+    
+      #print(target)
       # Do not include targets which lack lat/lon
       if (target['lat'] == 0 or target['lon'] == 0):
         continue
@@ -111,9 +123,7 @@ def connector_thread():
       # Do not include ownship
       if (mode_s_code == ownship.mode_s_code):
         continue
-        
-      print('send')
-    
+
       # Pack the message
       buf = encoder.msgTrafficReport(latitude=target['lat'],
         longitude=target['lon'],
@@ -124,7 +134,7 @@ def connector_thread():
         callSign=target['callsign'],
         address=target['mode_s_code'])
         
-      s.sendto(buf, (DEF_SEND_ADDR, DEF_SEND_PORT))
+      s.sendto(bytes(buf), (DEF_SEND_ADDR, DEF_SEND_PORT))
       packetTotal += 1
     
     # GPS Time, Custom 101 Message

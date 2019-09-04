@@ -90,7 +90,8 @@ class Encoder(object):
       ts = ts & 0x0ffff
       st2 = st2 | 0x80
     
-    msg = bytearray(0x00)
+    msg = bytearray()
+    msg.append(0x00)
     fmt = '>BBHH'
     msg.extend(struct.pack(fmt,st1,st2,ts,mc))
     
@@ -106,7 +107,8 @@ class Encoder(object):
   
   def _msgType10and20(self, msgid, status, addrType, address, latitude, longitude, altitude, misc, navIntegrityCat, navAccuracyCat, hVelocity, vVelocity, trackHeading, emitterCat, callSign, code):
     """construct message ID 10 or 20"""
-    msg = bytearray(msgid)
+    msg = bytearray()
+    msg.append(msgid)
     
     b = ((status & 0xf) << 4) | (addrType & 0xf)
     msg.append(b)
@@ -115,15 +117,14 @@ class Encoder(object):
     msg.extend(self._pack24bit(self._makeLatitude(latitude)))
     msg.extend(self._pack24bit(self._makeLongitude(longitude)))
     
-    altitude = (int(altitude) + 1000) / 25
-    altitude = int(altitude)
+    altitude = int((altitude + 1000) / 25)
     
     if (altitude < 0):
       altitude = 0
     
     if (altitude > 0xffe):
       altitude = 0xffe
-    
+  
     # altitude is bits 15-4, misc code is bits 3-0
     msg.append((altitude & 0xff0) >> 4)  # top 8 bits of altitude
     msg.append(((altitude & 0xf) << 4) | (misc & 0xf))
@@ -152,7 +153,7 @@ class Encoder(object):
     
     # packing hVelocity, vVelocity into 3 bytes:  hh hv vv
     msg.append((hVelocity & 0xff0) >> 4)
-    msg.append( ((hVelocity & 0xf) << 4) | ((vVelocity & 0xf00) >> 8))
+    msg.append(((hVelocity & 0xf) << 4) | ((vVelocity & 0xf00) >> 8))
     msg.append(vVelocity & 0xff)
     
     trackHeading = int(trackHeading / (360. / 256)) # convert to 1.4 deg single byte
@@ -166,12 +167,12 @@ class Encoder(object):
     # code is top 4 bits, bottom 4 bits are 'spare'
     msg.append((code & 0xf) << 4)
     
-    return(self._preparedMessage(msg))
-  
+    return self._preparedMessage(msg)
   
   def msgOwnershipGeometricAltitude(self, altitude=0, merit=50, warning=False):
     """message ID #11"""
-    msg = bytearray(0x0b)
+    msg = bytearray()
+    msg.append(0x0b)
     
     # Convert altitude to 5ft increments
     altitude = int(altitude / 5)
@@ -193,10 +194,10 @@ class Encoder(object):
     
     return(self._preparedMessage(msg))
   
-  
   def msgGpsTime(self, count=0, quality=2, hour=None, minute=None):
     """message ID #101 for Skyradar"""
-    msg = bytearray(0x65)
+    msg = bytearray()
+    msg.append(0x65)
     
     msg.append(0x2a) # firmware version
     msg.append(0) # debug data
@@ -218,7 +219,8 @@ class Encoder(object):
   
   def msgStratuxHeartbeat(self, st1=0x02, ver=1):
     """message ID #204 for Stratux heartbeat"""
-    msg = bytearray(0xcc)
+    msg = bytearray()
+    msg.append(0xcc)
     
     fmt = '>B'
     data = st1 & 0x03  # lower two bits only
@@ -230,7 +232,8 @@ class Encoder(object):
   def msgSXHeartbeat(self, fv=0x0011, hv=0x0001, st1=0x02, st2=0x01, satLock=0, satConn=0, num978=0, num1090=0, rate978=0, rate1090=0, cpuTemp=0, towers=[]):
     """message ID #29 for Hiltonsoftware SX heartbeat"""
     
-    msg = bytearray(0x1d)
+    msg = bytearray()
+    msg.append(0x1d)
     fmt = '>ccBBLLHHBBHHHHHB'
     msg.extend(struct.pack(fmt,'S','X',1,1,fv,hv,st1,st2,satLock,satConn,num978,num1090,rate978,rate1090,cpuTemp,len(towers)))
 
@@ -251,7 +254,8 @@ class Encoder(object):
     nameShort = str(nameShort + " "*8)[:8]
     nameLong = str(nameLong + " "*16)[:16]
 
-    msg = bytearray(0x65)
+    msg = bytearray()
+    msg.append(0x65)
     fmt = '>BB8s8s16sB'
     msg.extend(struct.pack(fmt, subId, mv, sn, nameShort, nameLong, capmask))
 
