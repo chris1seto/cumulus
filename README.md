@@ -31,3 +31,21 @@ wpa_passphrase=inthesky
 ```
 DAEMON_CONF="/etc/hostapd/hostapd.conf"
 ```
+
+# dnsmasq notes
+* Config:
+```
+interface=wlp2s0
+dhcp-range=192.168.8.2,192.168.8.20,255.255.255.0,12h
+no-hosts
+addn-hosts=/etc/hosts.dnsmasq
+```
+
+# network interfaces notes
+* /etc/network/interfaces
+```
+auto wlp2s0
+iface wlp2s0 inet static
+address 192.168.8.1
+netmask 255.255.255.0
+```
