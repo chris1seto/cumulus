@@ -49,3 +49,6 @@ iface wlp2s0 inet static
 address 192.168.8.1
 netmask 255.255.255.0
 ```
+
+# rtl-sdr notes
+* To change the serial number creported in the USB dscriptor of an rtl-sdr use `rtl_eeprom -s 00000xxx`
