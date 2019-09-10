@@ -11,10 +11,11 @@ import argparse
 import collections
 import adsb_target
 import dump1090_provider
+import vectornav_provider
 import queue
 
 # Default options for GDL90 output
-DEF_SEND_ADDR = "192.168.1.255"
+DEF_SEND_ADDR = "192.168.8.255"
 DEF_SEND_PORT = 4000
 
 # Default for dump1090 
@@ -38,6 +39,11 @@ def connector_thread():
   # Start the dump1090 provider
   dump1090_provider_ = dump1090_provider.Dump1090Provider(HOST_1090, PORT_1090, target_updates_queue)
   dump1090_provider_.start()
+  
+  # Start vectornav_provider
+  situation_update_queue = queue.Queue()
+  vectornav_provider_ = vectornav_provider.VectornavProvider('/dev/ttyUSB0', 230400, situation_update_queue)
+  vectornav_provider_.start()
 
   packetTotal = 0
   encoder = gdl90encoder.Encoder()
