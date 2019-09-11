@@ -3,7 +3,6 @@
 import socket
 import threading
 from time import time, sleep
-from functools import partial
 import serial
 import struct
 import cstruct
@@ -105,7 +104,7 @@ VN_TYPES = [
   # Common group
   [
     ('TimeStartup', VnUint64), ('TimeGps', VnUint64), ('TimeSyncIn', VnUint64), ('YawPitchRoll', VnYawPitchRoll),
-    ('Quaternion', VnQuaternion), ('AngularRate', VnXyz), ('Position', VnPosLla), ('Velocity', VnNed),
+    ('Quaternion', VnQuaternion), ('AngularRate', VnXyz), ('InsPosition', VnPosLla), ('Velocity', VnNed),
     ('Accel', VnXyz), ('Imu', VnImu), ('MagPres', None), ('DeltaThetaVel', None),
     ('InsStatus', VnUint16), ('SyncInCnt', VnUint32), ('TimeGpsPps', VnUint64)
   ],
@@ -124,7 +123,7 @@ VN_TYPES = [
 
   # GPS1
   [
-    ('UTC', None),  ('Tow', VnUint64),  ('Week', VnUint16),  ('NumSats', VnUint8),  ('Fix', VnUint8),  ('PosLla', VnPosLla),
+    ('UTC', None),  ('Tow', VnUint64),  ('Week', VnUint16),  ('NumSats', VnUint8),  ('Fix', VnUint8),  ('GpsPosLla', VnPosLla),
     ('PosEcef', VnPosEcef), ('VelNed', VnNed), ('VelEcef', None), ('PosU', VnNed), ('VelU', VnFloat), ('TimeU', VnFloat), ('TimeInfo', None),
     ('DOP', None), ('SatInfo', None)
   ],
@@ -137,7 +136,7 @@ VN_TYPES = [
 
   # INS
   [
-    ('InsStatus', VnUint16),  ('PosLla', VnPosLla), ('PosEcef', VnPosEcef), ('VelBody', VnXyz), ('VelNed', VnNed),
+    ('InsStatus', VnUint16),  ('InsPosLla', VnPosLla), ('PosEcef', VnPosEcef), ('VelBody', VnXyz), ('VelNed', VnNed),
     ('VelEcef', None), ('MagEcef', None), ('AccelEcef', None),('LinearAccelEcef', None), ('PosU', VnFloat), ('VelU', VnFloat)
   ]
 ]
@@ -215,17 +214,12 @@ class VectorNavPacketDecoder:
 
     return payload_size
 
-  def get_data_length(self, group, data):
-      try:
-        length = VN_DATA_LENGTH[group][data]
-      except:
-        return False
-
-      return length
-
   def process_payload(self, payload):
     parse_index = 0
     extracted_data_items = {}
+
+    #print(self.data_items)
+    #print('')
 
     # Extract each item
     for item in self.data_items:
@@ -237,7 +231,9 @@ class VectorNavPacketDecoder:
 
       # Unpack the data
       unpacked_data = item[1]()
-      unpacked_data.unpack(payload[parse_index:parse_index + len(unpacked_data)])
+      data_item_length = len(unpacked_data)
+      unpacked_data.unpack(payload[parse_index:parse_index + data_item_length])
+      parse_index += data_item_length
 
       # If this is a single value field, append just the value
       if (len(unpacked_data.__fields__) == 1):
@@ -248,11 +244,11 @@ class VectorNavPacketDecoder:
     return extracted_data_items
 
 class VectornavProvider(threading.Thread):
-  def __init__(self, port, baud, situation_queue):
+  def __init__(self, port, baud, ins_queue):
     super().__init__()
 
     self.serial_port = serial.Serial(port, baud)
-    self.situation_queue = situation_queue
+    self.ins_queue = ins_queue
 
   def run(self):
     sync_buffer = bytearray()
@@ -317,8 +313,8 @@ class VectornavProvider(threading.Thread):
             new_packet = packet_decoder.process_payload(sync_buffer[payload_start:payload_start + packet_decoder.calculate_payload_size()])
 
             # Enqueue the result
-            print(new_packet)
-
+            self.ins_queue.put(new_packet)
+            
             # Purge the entire buffer
             del sync_buffer[0:(parse_pointer + VN_CRC_SIZE)]
           else:

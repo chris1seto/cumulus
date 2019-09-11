@@ -13,6 +13,7 @@ import adsb_target
 import dump1090_provider
 import vectornav_provider
 import queue
+import configparser
 
 # Default options for GDL90 output
 DEF_SEND_ADDR = "192.168.8.255"
@@ -28,7 +29,35 @@ MAX_TARGET_KEEP_TIMEOUT = 30
 
 DEFAULT_TARGET = {'lat': 0, 'lon': 0, 'altitude': 0, 'horizontal_speed': 0, 'vertical_rate': 0, 'track': 0, 'callsign': '---', 'last_seen': 0}
 
+INS_FIELDS = ['TimeGps']
+
+class VectornavMerger(threading.Thread):
+  def __init__(self, vectornav_queue):
+    super().__init__()
+    
+    self.vectornav_state = {}
+    self.vectornav_queue = vectornav_queue
+
+  def run(self):
+    while True:
+      # Get the latest INS update
+      vn_update = self.vectornav_queue.get()
+      
+      # Get the current time
+      time_now = time.time()
+      
+      # Update the main representation
+      for item_name, item in vn_update.items():
+        self.vectornav_state.update({item_name: [item, time_now]})
+        
+  def get_vectornav_state(self):
+    return self.vectornav_state
+
 def connector_thread():
+  # Open config
+  config = configparser.ConfigParser()
+  config.read('cumulus_config.ini')
+
   # GDL90 output
   s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -41,19 +70,30 @@ def connector_thread():
   dump1090_provider_.start()
   
   # Start vectornav_provider
-  situation_update_queue = queue.Queue()
-  vectornav_provider_ = vectornav_provider.VectornavProvider('/dev/ttyUSB0', 230400, situation_update_queue)
+  ins_update_queue = queue.Queue()
+  vectornav_provider_ = vectornav_provider.VectornavProvider('/dev/ttyUSB0', 230400, ins_update_queue)
   vectornav_provider_.start()
+  
+  # Start the vn merger
+  vectornav_merger = VectornavMerger(ins_update_queue)
+  vectornav_merger.start()
 
   packetTotal = 0
   encoder = gdl90encoder.Encoder()
 
-  ownship = adsb_target.AdsbTarget(38.625263, -90.2001021, 2500, 0, 0, 360, "N610SH", 0xA7F056)
-
+  ownship = adsb_target.AdsbTarget(0, 0, 0, 0, 0, 0, config['ownship']['callsign'], int(config['ownship']['mode_s_code'], base = 16))
+  
+  ins_data = {}
   target_table = {}
 
   while True:
     time_start = time.time()
+    
+    # Merge INS data
+    # Verify we have fields
+    current_ins_data = vectornav_merger.get_vectornav_state()
+    if (INS_FIELDS in list(current_ins_data.keys())):
+      print('has fields')
     
     # Merge traffic data
     merge_count = 0
