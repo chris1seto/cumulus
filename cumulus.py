@@ -14,6 +14,8 @@ import dump1090_provider
 import vectornav_provider
 import queue
 import configparser
+import frozendict
+
 
 # Default options for GDL90 output
 DEF_SEND_ADDR = "192.168.8.255"
@@ -29,7 +31,7 @@ MAX_TARGET_KEEP_TIMEOUT = 30
 
 DEFAULT_TARGET = {'lat': 0, 'lon': 0, 'altitude': 0, 'horizontal_speed': 0, 'vertical_rate': 0, 'track': 0, 'callsign': '---', 'last_seen': 0}
 
-INS_FIELDS = ['TimeGps']
+INS_FIELDS = ['TimeGps', 'NumSats', 'Fix', 'YawPitchRoll', 'YprU', 'InsPosLla']
 
 class VectornavMerger(threading.Thread):
   def __init__(self, vectornav_queue):
@@ -41,8 +43,7 @@ class VectornavMerger(threading.Thread):
   def run(self):
     while True:
       # Get the latest INS update
-      vn_update = self.vectornav_queue.get()
-      
+      vn_update = self.vectornav_queue.get()     
       # Get the current time
       time_now = time.time()
       
@@ -51,7 +52,13 @@ class VectornavMerger(threading.Thread):
         self.vectornav_state.update({item_name: [item, time_now]})
         
   def get_vectornav_state(self):
-    return self.vectornav_state
+    return frozendict.frozendict(self.vectornav_state)
+    
+def EulerYawToHeading(euler):
+  if (euler < 0):
+    return euler + 360
+  
+  return euler
 
 def connector_thread():
   # Open config
@@ -92,9 +99,16 @@ def connector_thread():
     # Merge INS data
     # Verify we have fields
     current_ins_data = vectornav_merger.get_vectornav_state()
-    if (INS_FIELDS in list(current_ins_data.keys())):
-      print('has fields')
+    if (set(INS_FIELDS).issubset(current_ins_data.keys())):
+      # Write heading
+      ownship.track = EulerYawToHeading(current_ins_data['YawPitchRoll'][0].yaw)
     
+      # Write GPS data if INS is valid
+      if ((current_ins_data['InsStatus'][0] & 0x03) == 2):
+        ownship.lat = current_ins_data['InsPosLla'][0].latitude
+        ownship.lon = current_ins_data['InsPosLla'][0].longitude
+        ownship.altitude = current_ins_data['InsPosLla'][0].altitude
+      
     # Merge traffic data
     merge_count = 0
     while merge_count < MAX_MERGE_COUNT:

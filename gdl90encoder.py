@@ -260,3 +260,6 @@ class Encoder(object):
     msg.extend(struct.pack(fmt, subId, mv, sn, nameShort, nameLong, capmask))
 
     return(self._preparedMessage(msg))
+  
+  def msgAhrs(self, roll, pitch, heading, indicated_airspeed, true_airspeed):
+    pass
