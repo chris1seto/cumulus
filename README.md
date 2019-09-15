@@ -1,11 +1,48 @@
 # cumulus
 A stratus/stratux x86_64 remake on crack
 
-# To run
-* Clone, build, make install rtl-sdr drivers
-* clone, and build dump1090
-* cd into dump1090 root: `./dump1090 --interactive --net`
-* cd into this repo root: `./cumulus.py`
+# Dependencies
+* https://git.osmocom.org/rtl-sdr/
+* https://github.com/stratux/dump1090
+* https://github.com/mutability/dump978
+
+# Setup/Run
+
+```
+cd ~
+mkdir opt && cd opt
+git clone git://git.osmocom.org/rtl-sdr.git
+git clone https://github.com/stratux/dump1090.git
+git clone https://github.com/mutability/dump978.git
+git clone https://github.com/chris1seto/cumulus.git
+
+# Build rtl-sdr drivers
+cd rtl-sdr
+mkdir build
+cd build
+cmake ../ -DINSTALL_UDEV_RULES=ON
+make
+sudo make install
+sudo ldconfig
+
+# Build dump1090
+cd ~/opt/dump1090
+make
+
+# Build dump978
+cd ~/opt/dump978
+make
+
+# Plug in ONLY your 1090 SDR:
+sudo rtl_eeprom -s 00000001
+
+# Plug in ONLY your 978 SDR:
+sudo rtl_eeprom -s 00000002
+
+# Run cumulus
+cd ~/opt/cumulus
+./cumulus
+```
 
 # hostapd Notes
 * Need to disable Ubuntu's network manager on the wireless interface before hostapd will work
@@ -51,4 +88,4 @@ netmask 255.255.255.0
 ```
 
 # rtl-sdr notes
-* To change the serial number creported in the USB dscriptor of an rtl-sdr use `rtl_eeprom -s 00000xxx`
+* To change the serial number reported in the USB dscriptor of an rtl-sdr use `rtl_eeprom -s 00000xxx`
