@@ -76,6 +76,8 @@ interface=wlp2s0
 dhcp-range=192.168.8.2,192.168.8.20,255.255.255.0,12h
 no-hosts
 addn-hosts=/etc/hosts.dnsmasq
+bind-interfaces
+port=0
 ```
 
 # network interfaces notes
