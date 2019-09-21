@@ -14,7 +14,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 '''
 
 import sys
-import datetime
 import struct
 from gdl90fcs import crcCompute
 
@@ -78,13 +77,7 @@ class Encoder(object):
       longitude = (0x1000000 + longitude) & 0xffffff  # 2s complement
     return(longitude)
   
-  def msgHeartbeat(self, st1=0x81, st2=0x00, ts=None, mc=0x0000):
-    """message ID #0"""
-    # Auto-fill timestamp if not provided
-    if ts is None:
-      dt = datetime.datetime.utcnow()
-      ts = (dt.hour * 3600) + (dt.minute * 60) + dt.second
-    
+  def msgHeartbeat(self, st1=0x81, st2=0x00, ts=0, mc=0x0000):
     # Move 17-bit into status byte 2 if necessary
     if (ts & 0x10000) != 0:
       ts = ts & 0x0ffff
@@ -93,7 +86,7 @@ class Encoder(object):
     msg = bytearray()
     msg.append(0x00)
     fmt = '>BBHH'
-    msg.extend(struct.pack(fmt,st1,st2,ts,mc))
+    msg.extend(struct.pack(fmt, st1, st2, ts, mc))
     
     return(self._preparedMessage(msg))
   
@@ -194,7 +187,7 @@ class Encoder(object):
     
     return(self._preparedMessage(msg))
   
-  def msgGpsTime(self, count=0, quality=2, hour=None, minute=None):
+  def msgGpsTime(self, count=0, quality=2, hour=0, minute=0):
     """message ID #101 for Skyradar"""
     msg = bytearray()
     msg.append(0x65)
@@ -203,16 +196,12 @@ class Encoder(object):
     msg.append(0) # debug data
     msg.append(((0x30 + quality) & 0xff))  # GPS quality: '0'=no fix, '1'=regular, '2'=DGPS (WAAS)
     msg.extend(struct.pack('<I',count)[:-1])  # use first three LSB bytes only
-    
-    if hour is None or minute is None:
-       # Auto-fill timestamp if not provided
-        dt = datetime.datetime.utcnow()
-        hour = dt.hour
-        minute = dt.minute
+
     msg.append(hour & 0xff)
     msg.append(minute & 0xff)
     
-    msg.append(0); msg.append(0)  # debug data
+    msg.append(0)
+    msg.append(0)  # debug data
     msg.append(4) # hardware version
     
     return(self._preparedMessage(msg))
@@ -260,6 +249,3 @@ class Encoder(object):
     msg.extend(struct.pack(fmt, subId, mv, sn, nameShort, nameLong, capmask))
 
     return(self._preparedMessage(msg))
-  
-  def msgAhrs(self, roll, pitch, heading, indicated_airspeed, true_airspeed):
-    pass
