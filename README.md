@@ -91,3 +91,20 @@ netmask 255.255.255.0
 
 # rtl-sdr notes
 * To change the serial number reported in the USB dscriptor of an rtl-sdr use `rtl_eeprom -s 00000xxx`
+
+# Startup notes
+* dump1090 startup:
+```
+[Unit]
+Description=dump1090
+After=multi-user.target
+Conflicts=getty@tty1.service
+
+[Service]
+Type=simple
+ExecStart=/home/chris/opt/dump1090/dump1090 --device-index 1 --net
+StandardInput=tty-force
+
+[Install]
+WantedBy=multi-user.target
+```
