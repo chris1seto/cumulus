@@ -257,6 +257,4 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('-c', help=' Config path', action='store', dest='config_path', default=None)
   args = parser.parse_args()
-  while True:
-    time.sleep(5)
   connector_thread(args.config_path)
