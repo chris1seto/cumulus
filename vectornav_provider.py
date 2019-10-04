@@ -2,7 +2,7 @@
 
 import socket
 import threading
-from time import time, sleep
+import time
 import serial
 import struct
 import cstruct
@@ -218,9 +218,6 @@ class VectorNavPacketDecoder:
     parse_index = 0
     extracted_data_items = {}
 
-    #print(self.data_items)
-    #print('')
-
     # Extract each item
     for item in self.data_items:
       # If we don't have a decoder, just advance
@@ -247,7 +244,9 @@ class VectornavProvider(threading.Thread):
   def __init__(self, port, baud, ins_queue):
     super().__init__()
 
-    self.serial_port = serial.Serial(port, baud)
+    self.serial_port = serial.Serial(port, baud, timeout=10)
+    self.port = port
+    self.baud = baud
     self.ins_queue = ins_queue
 
   def run(self):
@@ -259,7 +258,16 @@ class VectornavProvider(threading.Thread):
 
     while True:
       # Read a new byte
-      sync_buffer.extend(self.serial_port.read(1))
+      try:
+        sync_buffer.extend(self.serial_port.read(1))
+      except:
+        print('Connection lost, reconnecting')
+        try:
+          self.serial_port = serial.Serial(self.port, self.baud, timeout=10)
+        except:
+          pass
+        time.sleep(1)
+        continue
 
       # Parse while we have data
       while (len(sync_buffer) > parse_pointer + parse_segment_size):

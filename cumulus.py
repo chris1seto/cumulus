@@ -197,15 +197,16 @@ def connector_thread(config_path):
     packet_total += 1
 
     # Ownership report
-    buf = encoder.msgOwnershipReport(latitude = ownship.lat,
-      longitude = ownship.lon,
-      altitude = ownship.altitude,
-      hVelocity = ownship.horizontal_speed,
-      vVelocity = ownship.vertical_rate,
-      trackHeading = ownship.track,
-      callSign = ownship.callsign)
-    s.sendto(buf, (DEF_SEND_ADDR, DEF_SEND_PORT))
-    packet_total += 1
+    if (ownship.lat != 0 and ownship.lon != 0):
+      buf = encoder.msgOwnershipReport(latitude = ownship.lat,
+        longitude = ownship.lon,
+        altitude = ownship.altitude,
+        hVelocity = ownship.horizontal_speed,
+        vVelocity = ownship.vertical_rate,
+        trackHeading = ownship.track,
+        callSign = ownship.callsign)
+      s.sendto(buf, (DEF_SEND_ADDR, DEF_SEND_PORT))
+      packet_total += 1
     
     # Ownership geometric altitude
     buf = encoder.msgOwnershipGeometricAltitude(altitude = ownship.altitude)

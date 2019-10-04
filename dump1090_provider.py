@@ -2,7 +2,7 @@
  
 import socket
 import threading
-from time import time, sleep
+import time
 from functools import partial
  
 BUFFER_SIZE_1090 = 100
@@ -34,8 +34,12 @@ class Dump1090Provider(threading.Thread):
     self.socket = None
  
   def run(self):
-    self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    self.socket.connect((self.host, self.port))
+    try:
+      self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      self.socket.connect((self.host, self.port))
+    except:
+      print('Could not connect to dump1090')
+      time.sleep(1)
     
     while True:
       try:
@@ -48,7 +52,7 @@ class Dump1090Provider(threading.Thread):
           continue
         
         # Record time now
-        target['last_seen'] = time()
+        target['last_seen'] = time.time()
         
         # Generate and enqueue the dict to emit
         target_update_data = {}
@@ -73,7 +77,7 @@ class Dump1090Provider(threading.Thread):
  
     return str(sentence)
  
-  def _readbytes(self, nbytes, timeout=10):
+  def _readbytes(self, nbytes, timeout=1):
     # This really is a shortcoming of the python standard library
     val = bytes()
     while not val:
@@ -81,9 +85,12 @@ class Dump1090Provider(threading.Thread):
         val = self.socket.recv(nbytes)
       except socket.error:
         print(f'dump1090 socket error. Waiting {timeout} sec to connect again')
-        sleep(timeout)
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect((self.host, self.port))
+        time.sleep(timeout)
+        try:
+          self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+          self.socket.connect((self.host, self.port))
+        except:
+          pass
         continue
 
     return val

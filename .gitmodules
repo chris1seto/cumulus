@@ -1,0 +1,6 @@
+[submodule "dump1090"]
+	path = dump1090
+	url = git@github.com:chris1seto/dump1090.git
+[submodule "dump978"]
+	path = dump978
+	url = git@github.com:chris1seto/dump978.git
