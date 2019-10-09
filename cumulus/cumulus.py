@@ -96,8 +96,8 @@ def connector_thread(config_path):
   dump1090_provider_.start()
   
   # Start the dump978 provider
-  #dump978_provider_ = dump978_provider.Dump978Provider()
-  #dump978_provider_.start()
+  dump978_provider_ = dump978_provider.Dump978Provider()
+  dump978_provider_.start()
   
   # Start vectornav_provider
   ins_update_queue = queue.Queue()

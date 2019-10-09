@@ -6,22 +6,14 @@ import threading
 import argparse
 import collections
 import subprocess
-
-def get_rtl_sdr_device_index(serial_number):
-  device_index_output = subprocess.check_output(['./rtlsdr_serial2index.sh', f'{serial_number:08d}'])
-  try:
-    index = int(device_index_output)
-  except:
-    return None
-    
-  return index
+import cumulus.rtl_sdr_tools
 
 DUMP1090_SDR_SERIAL_NUMBER = 1
 NO_DEVICE_SLEEP_TIMEOUT = 10
 
 if __name__ == '__main__':
   while True:
-    device_index = get_rtl_sdr_device_index(DUMP1090_SDR_SERIAL_NUMBER)
+    device_index = cumulus.rtl_sdr_tools.get_rtl_sdr_index_from_serial(DUMP1090_SDR_SERIAL_NUMBER)
 
     if (device_index == None):
       print('1090 SDR not found')
