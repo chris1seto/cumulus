@@ -15,7 +15,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import sys
 import struct
-from gdl90fcs import crcCompute
+from .gdl90fcs import crcCompute
 
 class Encoder(object):
   """GDL-90 data link interface decoder class"""

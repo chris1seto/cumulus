@@ -4,6 +4,7 @@ import socket
 import threading
 import time
 import subprocess
+import enum
 
 class UatFrameType(enum.Enum):
   UPLINK = 0
@@ -39,6 +40,8 @@ class Dump978Provider(threading.Thread):
     super().__init__()
 
   def run(self):
+    # Get the index of the target sdr
+  
     process_rtl_sdr = subprocess.Popen(['rtl_sdr', f'-d{device_index:d}', '-f978000000', '-s2083334', '-g48', '-'],
       stdout=subprocess.PIPE,
       stderr=subprocess.PIPE,
