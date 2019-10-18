@@ -38,7 +38,6 @@ class Dump1090Provider(threading.Thread):
       self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
       self.socket.connect((self.host, self.port))
     except:
-      print('Could not connect to dump1090')
       time.sleep(1)
     
     while True:
@@ -60,7 +59,7 @@ class Dump1090Provider(threading.Thread):
         self.target_update_queue.put(target_update_data)
         
       except SBS1ParseError as e:
-        print(e)
+        pass
  
   def read_sentence(self, startkey=b"MSG", stopkey=b"\r\n"):
     syncbuffer = bytearray()
@@ -84,7 +83,6 @@ class Dump1090Provider(threading.Thread):
       try:
         val = self.socket.recv(nbytes)
       except socket.error:
-        print(f'dump1090 socket error. Waiting {timeout} sec to connect again')
         time.sleep(timeout)
         try:
           self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -110,7 +108,7 @@ class Dump1090Provider(threading.Thread):
         try:
           message[fieldname] = parser(value)
         except Exception as e:
-          print(f"Parse warning on {fieldname} in MSG {sentence}: {str(e)}")
+          pass
           
     if 'mode_s_code' not in message:
       raise SBS1ParseError(f"MSG with no S code received: {sentence}")

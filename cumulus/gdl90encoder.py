@@ -249,3 +249,17 @@ class Encoder(object):
     msg.extend(struct.pack(fmt, subId, mv, sn, nameShort, nameLong, capmask))
 
     return(self._preparedMessage(msg))
+    
+  def msgUatUplink(self, time_of_reception, uplink_payload):
+    msg = bytearray()
+    msg.append(0x07)
+    
+    # Zulu time
+    msg.append(0x00)
+    msg.append(0x00)
+    msg.append(0x00)
+    
+    # Full contents of the payload
+    msg.extend(uplink_payload)
+    
+    return(self._preparedMessage(msg))
