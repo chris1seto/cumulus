@@ -12,12 +12,10 @@ A stratus/stratux x86_64 remake on crack
 cd ~
 mkdir opt && cd opt
 git clone git://git.osmocom.org/rtl-sdr.git
-git clone https://github.com/stratux/dump1090.git
-git clone https://github.com/mutability/dump978.git
 git clone https://github.com/chris1seto/cumulus.git
 
 # Build rtl-sdr drivers
-cd rtl-sdr
+cd cd ~/opt/rtl-sdr
 mkdir build
 cd build
 cmake ../ -DINSTALL_UDEV_RULES=ON
@@ -26,11 +24,11 @@ sudo make install
 sudo ldconfig
 
 # Build dump1090
-cd ~/opt/dump1090
+cd ~/opt/cumulus/dump1090
 make
 
 # Build dump978
-cd ~/opt/dump978
+cd ~/opt/cumulus/dump978
 make
 
 # Plug in ONLY your 1090 SDR:
@@ -41,7 +39,7 @@ sudo rtl_eeprom -s 00000002
 
 # Run cumulus
 cd ~/opt/cumulus
-./cumulus
+./cumulus_system_runner.py -c <path to your config file>
 ```
 
 # hostapd Notes
@@ -49,20 +47,24 @@ cd ~/opt/cumulus
 * hostapd config: /etc/hostapd/hostapd.conf
 ```
 auth_algs=1
-beacon_int=50
-channel=6
-country_code=US
-disassoc_low_ack=1
-driver=nl80211
+#beacon_int=50
 hw_mode=g
-ieee80211d=1
+channel=8
+country_code=US
+#disassoc_low_ack=1
+driver=nl80211
+wme_enabled=1
+#ieee80211d=1
 ieee80211n=1
+#ieee80211ac=1
 interface=wlp2s0
 rsn_pairwise=CCMP
 ssid=cumulus
 wpa=2
 wpa_key_mgmt=WPA-PSK
 wpa_passphrase=inthesky
+ht_capab=[HT40+]
+
 ```
 * To get hostapd to start automatically as a service, edit /etc/default/hostapd, add the line:
 ```
@@ -93,16 +95,16 @@ netmask 255.255.255.0
 * To change the serial number reported in the USB dscriptor of an rtl-sdr use `rtl_eeprom -s 00000xxx`
 
 # Startup notes
-* dump1090 startup:
+* Full system startup:
 ```
 [Unit]
-Description=dump1090
+Description=cumulus
 After=multi-user.target
-Conflicts=getty@tty1.service
 
 [Service]
 Type=simple
-ExecStart=/home/chris/opt/dump1090/dump1090 --device-index 1 --net
+WorkingDirectory=/home/user/opt/cumulus/
+ExecStart=/home/user/opt/cumulus/cumulus_system_runner.py -c /home/user/opt/cumulus/cumulus_config.ini
 StandardInput=tty-force
 
 [Install]
