@@ -8,6 +8,7 @@ import collections
 import queue
 import frozendict
 import datetime
+import enum
 
 from . import gdl90encoder
 from . import adsb_target
@@ -29,7 +30,35 @@ MAX_UAT_UPLINK_PER_FRAME = 5
 MAX_TARGET_KEEP_TIMEOUT = 30
 INS_TIMEOUT_S = .25
 UPDATE_PERIOD_S = .25
-DEFAULT_TARGET = {'lat': 0, 'lon': 0, 'altitude': 0, 'horizontal_speed': 0, 'vertical_rate': 0, 'track': 0, 'callsign': '---', 'last_seen': 0}
+DEFAULT_TARGET = {'lat': None, 'lon': None, 'altitude': 0, 'horizontal_speed': 0, 'vertical_rate': 0, 'track': 0, 'callsign': '---', 'last_seen': 0, 'updated': True, 'distance': None}
+
+METERS_TO_FT = 3.28084
+def meters_to_feet(meters):
+  return (meters * METERS_TO_FT)
+
+METERS_PER_SECOND_TO_KTS = 1.94384
+def meters_per_second_to_kts(mps):
+  # Compute the magnitude of the horizontal components (NE) of the xyz vector
+  # Then, convert to kts
+  return (mps * METERS_PER_SECOND_TO_KTS)
+
+EARTH_RADIUS_SM = 3958.8
+def calculate_distance_between_coords(a, b):
+  # Convert to rad
+	a_lat_r = math.radians(a[0])
+	a_lon_r = math.radians(a[1])
+
+	b_lat_r = math.radians(b[0])
+	b_lon_r = math.radians(b[1])
+
+	delta_lat = b_lat_r - a_lat_r
+	delta_lon = b_lon_r - a_lon_r
+
+	ea = math.sin(delta_lat / 2.0) * math.sin(delta_lat / 2.0) + (math.cos(a_lat_r) * math.cos(b_lat_r) * math.sin(delta_lon / 2.0) * math.sin(delta_lon / 2.0))
+
+	ec = 2.0 * math.atan2(math.sqrt(ea), math.sqrt(1.0 - ea))
+
+	return EARTH_RADIUS_SM * ec
 
 class Cumulus(threading.Thread):
   def __init__(self, config):
@@ -70,7 +99,7 @@ class Cumulus(threading.Thread):
     while True:
       timestamp_start = time.time()
       dt = datetime.datetime.fromtimestamp(timestamp_start)
-      
+
       # Fetch GPS situation
       gps_situation = nmea_gps.get_situation()
       if (gps_situation == None):
@@ -80,27 +109,32 @@ class Cumulus(threading.Thread):
         position_valid = True
         ownship.lat = gps_situation.lat
         ownship.lon = gps_situation.lon
-        ownship.altitude = gps_situation.alt
-        ownship.horizontal_speed = int(gps_situation.h_speed)
-        
+        ownship.altitude = int(meters_to_feet(gps_situation.alt))
+        ownship.horizontal_speed = int(meters_per_second_to_kts(gps_situation.h_speed))
+
         # Don't wander on heading if we have no speed
         if (ownship.horizontal_speed > 0):
           ownship.track = int(gps_situation.course)
-      
+
       # Merge traffic data
       for x in range(0, MAX_MERGE_COUNT_PER_FRAME):
         try:
           target_update = target_update_queue.get_nowait()
-          new_mode_s_code = list(target_update.keys())[0]
-
-          if new_mode_s_code in target_table.keys():
-            target_table[new_mode_s_code] = {**target_table[new_mode_s_code], **target_update[new_mode_s_code], 'updated': True}
-          else:
-            print(f'Adding {new_mode_s_code:x}')
-            target_table.update({new_mode_s_code: DEFAULT_TARGET})
-            target_table[new_mode_s_code] = {**target_table[new_mode_s_code], **target_update[new_mode_s_code], 'updated': True}
         except queue.Empty:
           break
+
+        # Get the new target update mode s code
+        new_mode_s_code = list(target_update.keys())[0]
+
+        # Check if we need to add a new target
+        if (not (new_mode_s_code in target_table.keys())):
+          print(f'Adding {new_mode_s_code:x}')
+          target_table.update({new_mode_s_code: DEFAULT_TARGET})
+        else:
+          print(f'Updating {new_mode_s_code:x}')
+
+        # Update the target entry
+        target_table[new_mode_s_code] = {**target_table[new_mode_s_code], **target_update[new_mode_s_code], 'updated': True}
 
       # Prune old targets
       purge_list = []
@@ -111,6 +145,16 @@ class Cumulus(threading.Thread):
 
       for purge_mode_s_code in purge_list:
         del target_table[purge_mode_s_code]
+
+      # Update target meta data
+      for mode_s_code, target in target_table.items():
+        # Calculate the distance to the target
+        if (position_valid and target['lat'] != None and target['lon'] != None):
+          target_distance = calculate_distance_between_coords((ownship.lat, ownship.lon), (target['lat'], target['lon']))
+        else:
+          target_distance = None
+
+        target_table[mode_s_code].update({'distance': target_distance})
 
       # Send UAT uplink messages
       for x in range(0, MAX_UAT_UPLINK_PER_FRAME):
@@ -150,12 +194,12 @@ class Cumulus(threading.Thread):
         # Only send the target if it's an update
         if (not target['updated']):
           continue
-        
+
         # Clear update flag
         target['updated'] = False
-      
+
         # Do not include targets which lack lat/lon
-        if (target['lat'] == 0 or target['lon'] == 0):
+        if (target['lat'] == None or target['lon'] == None):
           continue
 
         # Do not include ownship
