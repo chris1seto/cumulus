@@ -3,8 +3,6 @@ A stratus/stratux x86_64 remake on crack
 
 # Dependencies
 * https://git.osmocom.org/rtl-sdr/
-* https://github.com/stratux/dump1090
-* https://github.com/mutability/dump978
 
 # Setup/Run
 
